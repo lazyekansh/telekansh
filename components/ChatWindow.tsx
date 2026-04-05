@@ -52,7 +52,7 @@ function formatMessageDate(timestamp: number): string {
 export default function ChatWindow() {
   const {
     session, selectedChat, messages, loadingMessages,
-    setMessages, setLoadingMessages, setSession, setError,
+    setMessages, setLoadingMessages, setSession, setError, setSelectedChat,
   } = useTelegramStore();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -136,9 +136,19 @@ export default function ChatWindow() {
   const peerLabel = selectedChat.peerType === 'user' ? 'Private' : selectedChat.peerType === 'channel' ? 'Channel' : 'Group';
 
   return (
-    <div className="flex-1 flex flex-col h-screen bg-tg-bg">
+    <div className="w-full flex flex-col h-screen bg-tg-bg">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 h-14 border-b border-tg-border/30 bg-tg-sidebar flex-shrink-0">
+      <div className="flex items-center gap-2 md:gap-3 px-2 md:px-4 h-14 border-b border-tg-border/30 bg-tg-sidebar flex-shrink-0">
+        {/* Back button — mobile only */}
+        <button
+          onClick={() => setSelectedChat(null)}
+          className="md:hidden p-2 rounded-lg text-tg-tx2 hover:text-tg-tx hover:bg-tg-hover transition-all flex-shrink-0"
+          id="back-to-chats-btn"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
           style={{ backgroundColor: getAvatarColor(selectedChat.name) }}

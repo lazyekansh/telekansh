@@ -96,7 +96,7 @@ export default function ChatList() {
   };
 
   return (
-    <div className="w-80 min-w-[320px] h-screen bg-tg-sidebar flex flex-col border-r border-tg-border/30">
+    <div className="w-full h-screen bg-tg-sidebar flex flex-col border-r border-tg-border/30">
       {/* Header */}
       <div className="flex items-center justify-between px-4 h-14 border-b border-tg-border/30 flex-shrink-0">
         <div className="flex items-center gap-2">
