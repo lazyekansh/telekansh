@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useRef } from 'react';
 import { useTelegramStore } from '@/store/useTelegramStore';
+import Avatar from '@/components/Avatar';
 import type { Dialog } from '@/types';
 
 const AVATAR_COLORS = [
@@ -170,12 +171,13 @@ export default function ChatList() {
                 id={`dialog-${dialog.id}`}
               >
                 {/* Avatar */}
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
-                  style={{ backgroundColor: getAvatarColor(dialog.name) }}
-                >
-                  {getInitials(dialog.name)}
-                </div>
+                <Avatar
+                  peerId={dialog.id}
+                  peerType={dialog.peerType}
+                  accessHash={dialog.accessHash}
+                  name={dialog.name}
+                  size={40}
+                />
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">

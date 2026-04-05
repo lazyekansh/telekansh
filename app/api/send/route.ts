@@ -6,11 +6,11 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { session, chatId, peerType, accessHash, message } = await req.json();
+    const { session, chatId, peerType, accessHash, message, replyToMsgId } = await req.json();
     if (!session || !chatId || !peerType || !message) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
-    const result = await sendMessage(session, chatId, peerType, accessHash || '0', message);
+    const result = await sendMessage(session, chatId, peerType, accessHash || '0', message, replyToMsgId);
     return NextResponse.json(result);
   } catch (err: any) {
     console.error('send error:', err);

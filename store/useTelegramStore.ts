@@ -19,6 +19,10 @@ interface TelegramState {
   messages: Message[];
   selectedChat: Dialog | null;
 
+  // Message actions
+  replyToMessage: Message | null;
+  editingMessage: Message | null;
+
   // Loading flags
   loadingAuth: boolean;
   loadingDialogs: boolean;
@@ -35,6 +39,10 @@ interface TelegramState {
   setDialogs: (dialogs: Dialog[]) => void;
   setMessages: (messages: Message[]) => void;
   setSelectedChat: (chat: Dialog | null) => void;
+  setReplyTo: (msg: Message | null) => void;
+  setEditing: (msg: Message | null) => void;
+  clearReplyTo: () => void;
+  clearEditing: () => void;
   setLoadingAuth: (v: boolean) => void;
   setLoadingDialogs: (v: boolean) => void;
   setLoadingMessages: (v: boolean) => void;
@@ -53,6 +61,8 @@ export const useTelegramStore = create<TelegramState>((set) => ({
   dialogs: [],
   messages: [],
   selectedChat: null,
+  replyToMessage: null,
+  editingMessage: null,
   loadingAuth: false,
   loadingDialogs: false,
   loadingMessages: false,
@@ -71,7 +81,11 @@ export const useTelegramStore = create<TelegramState>((set) => ({
   setError: (error) => set({ error }),
   setDialogs: (dialogs) => set({ dialogs }),
   setMessages: (messages) => set({ messages }),
-  setSelectedChat: (selectedChat) => set({ selectedChat, messages: [] }),
+  setSelectedChat: (selectedChat) => set({ selectedChat, messages: [], replyToMessage: null, editingMessage: null }),
+  setReplyTo: (replyToMessage) => set({ replyToMessage, editingMessage: null }),
+  setEditing: (editingMessage) => set({ editingMessage, replyToMessage: null }),
+  clearReplyTo: () => set({ replyToMessage: null }),
+  clearEditing: () => set({ editingMessage: null }),
   setLoadingAuth: (loadingAuth) => set({ loadingAuth }),
   setLoadingDialogs: (loadingDialogs) => set({ loadingDialogs }),
   setLoadingMessages: (loadingMessages) => set({ loadingMessages }),
@@ -99,6 +113,8 @@ export const useTelegramStore = create<TelegramState>((set) => ({
       dialogs: [],
       messages: [],
       selectedChat: null,
+      replyToMessage: null,
+      editingMessage: null,
       loadingAuth: false,
       loadingDialogs: false,
       loadingMessages: false,

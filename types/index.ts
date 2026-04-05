@@ -14,6 +14,9 @@ export interface Message {
   date: number;
   isOutgoing: boolean;
   mediaType?: string;
+  replyToId?: number;
+  senderName?: string;
+  senderId?: string;
 }
 
 export interface TgUser {

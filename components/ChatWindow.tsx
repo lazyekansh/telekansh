@@ -3,36 +3,8 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useTelegramStore } from '@/store/useTelegramStore';
 import MessageInput from '@/components/MessageInput';
-import MediaViewer from '@/components/MediaViewer';
-
-const AVATAR_COLORS = [
-  '#e17076', '#7bc862', '#e5ca77', '#65aadd',
-  '#a695e7', '#ee7aae', '#6ec9cb', '#faa774',
-];
-
-function getAvatarColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
-}
-
-function formatMessageTime(timestamp: number): string {
-  if (!timestamp) return '';
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
+import MessageBubble from '@/components/MessageBubble';
+import Avatar from '@/components/Avatar';
 
 function formatMessageDate(timestamp: number): string {
   if (!timestamp) return '';
@@ -98,7 +70,7 @@ export default function ChatWindow() {
     };
   }, [selectedChat, fetchMessages]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -108,7 +80,7 @@ export default function ChatWindow() {
   // Empty state
   if (!selectedChat) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-tg-bg">
+      <div className="w-full flex-1 flex items-center justify-center bg-tg-bg">
         <div className="text-center animate-fade-in">
           <div className="w-24 h-24 rounded-full bg-tg-panel/30 flex items-center justify-center mx-auto mb-4">
             <svg className="w-12 h-12 text-tg-tx2/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
@@ -135,6 +107,7 @@ export default function ChatWindow() {
   }
 
   const peerLabel = selectedChat.peerType === 'user' ? 'Private' : selectedChat.peerType === 'channel' ? 'Channel' : 'Group';
+  const isGroup = selectedChat.peerType === 'chat' || selectedChat.peerType === 'channel';
 
   return (
     <div className="w-full flex flex-col h-screen bg-tg-bg">
@@ -150,12 +123,13 @@ export default function ChatWindow() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <div
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
-          style={{ backgroundColor: getAvatarColor(selectedChat.name) }}
-        >
-          {getInitials(selectedChat.name)}
-        </div>
+        <Avatar
+          peerId={selectedChat.id}
+          peerType={selectedChat.peerType}
+          accessHash={selectedChat.accessHash}
+          name={selectedChat.name}
+          size={36}
+        />
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-semibold text-white truncate">{selectedChat.name}</h2>
           <p className="text-[11px] text-tg-tx2">{peerLabel}</p>
@@ -174,7 +148,7 @@ export default function ChatWindow() {
       </div>
 
       {/* Messages area */}
-      <div ref={containerRef} className="flex-1 overflow-y-auto px-4 py-4" id="messages-container">
+      <div ref={containerRef} className="flex-1 overflow-y-auto px-3 sm:px-4 py-4" id="messages-container">
         {loadingMessages && messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="w-8 h-8 border-2 border-tg-accent/30 border-t-tg-accent rounded-full animate-spin" />
@@ -184,7 +158,7 @@ export default function ChatWindow() {
             No messages yet
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto space-y-1">
+          <div className="max-w-3xl mx-auto">
             {groupedMessages.map((group) => (
               <div key={group.date}>
                 {/* Date separator */}
@@ -196,39 +170,12 @@ export default function ChatWindow() {
 
                 {/* Messages */}
                 {group.msgs.map((msg) => (
-                  <div
+                  <MessageBubble
                     key={msg.id}
-                    className={`flex mb-1 ${msg.isOutgoing ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`
-                        max-w-[75%] px-3 py-2 rounded-2xl text-sm leading-relaxed
-                        ${msg.isOutgoing
-                          ? 'bg-tg-msg-out text-white rounded-br-md'
-                          : 'bg-tg-msg-in text-tg-tx rounded-bl-md'
-                        }
-                      `}
-                    >
-                      {['Photo', 'Document'].includes(msg.mediaType || '') && (
-                        <div className="mb-2 w-full">
-                          <MediaViewer messageId={msg.id} />
-                        </div>
-                      )}
-                      
-                      {msg.mediaType && !['Photo', 'Document'].includes(msg.mediaType) && !msg.text && (
-                        <span className="italic text-tg-tx2 text-xs">[{msg.mediaType}]</span>
-                      )}
-                      {msg.text && (
-                        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                      )}
-                      {msg.mediaType && !['Photo', 'Document'].includes(msg.mediaType) && msg.text && (
-                        <span className="italic text-tg-tx2 text-[10px] block mt-1">[{msg.mediaType}]</span>
-                      )}
-                      <span className={`text-[10px] float-right ml-3 mt-1 ${msg.isOutgoing ? 'text-white/40' : 'text-tg-tx2/60'}`}>
-                        {formatMessageTime(msg.date)}
-                      </span>
-                    </div>
-                  </div>
+                    msg={msg}
+                    isGroup={isGroup}
+                    messages={messages}
+                  />
                 ))}
               </div>
             ))}

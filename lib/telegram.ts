@@ -150,7 +150,6 @@ export async function getDialogs(
         continue;
       }
 
-      // Always use the entity's own ID (positive) for peer construction
       const entityId = entity.id.toString();
 
       dialogs.push({
@@ -173,7 +172,6 @@ export async function getDialogs(
 // ─── Messages ───────────────────────────────────────────────────────
 
 function buildInputPeer(chatId: string, peerType: string, accessHash: string) {
-  // Ensure positive ID — Telegram dialog IDs can be negative but InputPeer needs positive
   const rawId = bigInt(chatId);
   const id = rawId.isNegative() ? rawId.abs() : rawId;
   const hash = bigInt(accessHash);
@@ -207,17 +205,66 @@ export async function getMessages(
       .map((msg: any) => {
         let mediaType: string | undefined;
         if (msg.media) {
-          mediaType = msg.media.className?.replace('MessageMedia', '') || 'Media';
+          const mc = msg.media.className || '';
+          if (mc === 'MessageMediaPhoto') {
+            mediaType = 'Photo';
+          } else if (mc === 'MessageMediaDocument') {
+            const doc = (msg.media as any).document;
+            const mime = doc?.mimeType || '';
+            if (mime === 'image/webp' || mime === 'application/x-tgsticker') {
+              mediaType = 'Sticker';
+            } else if (mime.startsWith('video/')) {
+              mediaType = 'Video';
+            } else if (mime === 'image/gif' || mime === 'video/mp4') {
+              // GIFs are often stored as mp4 in Telegram
+              const isGif = doc?.attributes?.some((a: any) => a.className === 'DocumentAttributeAnimated');
+              mediaType = isGif ? 'GIF' : (mime.startsWith('video/') ? 'Video' : 'Document');
+            } else {
+              mediaType = 'Document';
+            }
+          } else if (mc === 'MessageMediaWebPage') {
+            mediaType = undefined; // web page previews are just text
+          } else {
+            mediaType = mc.replace('MessageMedia', '') || 'Media';
+          }
         }
+
+        // Extract sender info for groups
+        let senderName: string | undefined;
+        let senderId: string | undefined;
+        if (msg.fromId) {
+          senderId = msg.fromId.userId?.toString() || msg.fromId.channelId?.toString() || undefined;
+        }
+        // Try to get sender name from the message's sender entity
+        if (msg._sender) {
+          const s = msg._sender;
+          if (s.firstName || s.lastName) {
+            senderName = [s.firstName, s.lastName].filter(Boolean).join(' ');
+          } else if (s.title) {
+            senderName = s.title;
+          } else if (s.username) {
+            senderName = s.username;
+          }
+        }
+
+        // Extract reply info
+        let replyToId: number | undefined;
+        if (msg.replyTo && msg.replyTo.replyToMsgId) {
+          replyToId = msg.replyTo.replyToMsgId;
+        }
+
         return {
           id: msg.id,
           text: msg.message || '',
           date: msg.date || 0,
           isOutgoing: Boolean(msg.out),
           mediaType,
+          replyToId,
+          senderName,
+          senderId,
         };
       })
-      .reverse(); // API returns newest-first, we want oldest-first
+      .reverse();
 
     return { messages, sessionString: snap(client) };
   } finally {
@@ -232,13 +279,76 @@ export async function sendMessage(
   chatId: string,
   peerType: string,
   accessHash: string,
-  message: string
+  message: string,
+  replyToMsgId?: number
 ): Promise<{ success: boolean; sessionString: string }> {
   const client = createClient(sessionString);
   try {
     await client.connect();
     const peer = buildInputPeer(chatId, peerType, accessHash);
-    await client.sendMessage(peer, { message });
+    await client.sendMessage(peer, { message, replyTo: replyToMsgId });
+    return { success: true, sessionString: snap(client) };
+  } finally {
+    await client.disconnect();
+  }
+}
+
+// ─── Edit ───────────────────────────────────────────────────────────
+
+export async function editMessage(
+  sessionString: string,
+  chatId: string,
+  peerType: string,
+  accessHash: string,
+  messageId: number,
+  newText: string
+): Promise<{ success: boolean; sessionString: string }> {
+  const client = createClient(sessionString);
+  try {
+    await client.connect();
+    const peer = buildInputPeer(chatId, peerType, accessHash);
+    await client.invoke(
+      new Api.messages.EditMessage({
+        peer,
+        id: messageId,
+        message: newText,
+      })
+    );
+    return { success: true, sessionString: snap(client) };
+  } finally {
+    await client.disconnect();
+  }
+}
+
+// ─── Delete ─────────────────────────────────────────────────────────
+
+export async function deleteMessages(
+  sessionString: string,
+  chatId: string,
+  peerType: string,
+  accessHash: string,
+  messageIds: number[],
+  revoke: boolean = true
+): Promise<{ success: boolean; sessionString: string }> {
+  const client = createClient(sessionString);
+  try {
+    await client.connect();
+    if (peerType === 'channel') {
+      const peer = buildInputPeer(chatId, peerType, accessHash);
+      await client.invoke(
+        new Api.channels.DeleteMessages({
+          channel: peer as Api.InputPeerChannel,
+          id: messageIds,
+        })
+      );
+    } else {
+      await client.invoke(
+        new Api.messages.DeleteMessages({
+          id: messageIds,
+          revoke,
+        })
+      );
+    }
     return { success: true, sessionString: snap(client) };
   } finally {
     await client.disconnect();
@@ -259,19 +369,18 @@ export async function downloadMedia(
     await client.connect();
     const peer = buildInputPeer(chatId, peerType, accessHash);
     const messages = await client.getMessages(peer, { ids: [messageId] });
-    
+
     if (!messages || messages.length === 0) {
       throw new Error('Message not found');
     }
 
     const msg = messages[0];
     const buffer = await client.downloadMedia(msg, {});
-    
+
     if (!buffer) {
       throw new Error('Failed to download media or media not supported');
     }
 
-    // Attempt to guess mimeType based on className
     let mimeType = 'application/octet-stream';
     if (msg.media && (msg.media as any).className === 'MessageMediaPhoto') {
       mimeType = 'image/jpeg';
@@ -285,6 +394,33 @@ export async function downloadMedia(
     const base64Data = buffer.toString('base64');
     return { base64Data, mimeType };
 
+  } finally {
+    await client.disconnect();
+  }
+}
+
+// ─── Avatar ─────────────────────────────────────────────────────────
+
+export async function downloadAvatar(
+  sessionString: string,
+  peerId: string,
+  peerType: string,
+  accessHash: string
+): Promise<{ base64Data: string | null }> {
+  const client = createClient(sessionString);
+  try {
+    await client.connect();
+    const peer = buildInputPeer(peerId, peerType, accessHash);
+    const buffer = await client.downloadProfilePhoto(peer);
+
+    if (!buffer || (buffer instanceof Buffer && buffer.length === 0)) {
+      return { base64Data: null };
+    }
+
+    const base64Data = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+    return { base64Data };
+  } catch {
+    return { base64Data: null };
   } finally {
     await client.disconnect();
   }
