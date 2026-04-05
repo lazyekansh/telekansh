@@ -1,5 +1,6 @@
 import { TelegramClient, Api } from 'telegram';
 import { StringSession } from 'telegram/sessions';
+import { computeCheck } from 'telegram/Password';
 import bigInt from 'big-integer';
 import type { Dialog, Message, TgUser } from '@/types';
 
@@ -90,10 +91,10 @@ export async function checkPassword(
   try {
     await client.connect();
     const passwordSrp = await client.invoke(new Api.account.GetPassword());
-    const srpPassword = await (client as any)._computePasswordCheck(passwordSrp, password);
+    const srpResult = await computeCheck(passwordSrp, password);
     const result = await client.invoke(
       new Api.auth.CheckPassword({
-        password: srpPassword,
+        password: srpResult,
       })
     );
     const updatedSession = snap(client);
@@ -149,8 +150,11 @@ export async function getDialogs(
         continue;
       }
 
+      // Always use the entity's own ID (positive) for peer construction
+      const entityId = entity.id.toString();
+
       dialogs.push({
-        id: d.id?.toString() || entity.id.toString(),
+        id: entityId,
         name,
         lastMessage: d.message?.message || '',
         lastMessageDate: d.message?.date || 0,
@@ -169,7 +173,9 @@ export async function getDialogs(
 // ─── Messages ───────────────────────────────────────────────────────
 
 function buildInputPeer(chatId: string, peerType: string, accessHash: string) {
-  const id = bigInt(chatId);
+  // Ensure positive ID — Telegram dialog IDs can be negative but InputPeer needs positive
+  const rawId = bigInt(chatId);
+  const id = rawId.isNegative() ? rawId.abs() : rawId;
   const hash = bigInt(accessHash);
   switch (peerType) {
     case 'user':

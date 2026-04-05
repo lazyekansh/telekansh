@@ -7,7 +7,7 @@ import ChatList from '@/components/ChatList';
 import ChatWindow from '@/components/ChatWindow';
 
 export default function Home() {
-  const { authStep, boot } = useTelegramStore();
+  const { authStep, selectedChat, boot } = useTelegramStore();
 
   useEffect(() => {
     boot();
@@ -19,8 +19,21 @@ export default function Home() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      <ChatList />
-      <ChatWindow />
+      {/* Sidebar: hidden on mobile when a chat is selected */}
+      <div className={`
+        w-full md:w-80 md:min-w-[320px] h-screen flex-shrink-0
+        ${selectedChat ? 'hidden md:flex' : 'flex'}
+      `}>
+        <ChatList />
+      </div>
+
+      {/* Chat window: hidden on mobile when no chat selected */}
+      <div className={`
+        flex-1 h-screen min-w-0
+        ${selectedChat ? 'flex' : 'hidden md:flex'}
+      `}>
+        <ChatWindow />
+      </div>
     </div>
   );
 }
