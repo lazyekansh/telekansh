@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useTelegramStore } from '@/store/useTelegramStore';
 import MessageInput from '@/components/MessageInput';
+import MediaViewer from '@/components/MediaViewer';
 
 const AVATAR_COLORS = [
   '#e17076', '#7bc862', '#e5ca77', '#65aadd',
@@ -208,13 +209,19 @@ export default function ChatWindow() {
                         }
                       `}
                     >
-                      {msg.mediaType && !msg.text && (
+                      {['Photo', 'Document'].includes(msg.mediaType || '') && (
+                        <div className="mb-2 w-full">
+                          <MediaViewer messageId={msg.id} />
+                        </div>
+                      )}
+                      
+                      {msg.mediaType && !['Photo', 'Document'].includes(msg.mediaType) && !msg.text && (
                         <span className="italic text-tg-tx2 text-xs">[{msg.mediaType}]</span>
                       )}
                       {msg.text && (
                         <p className="whitespace-pre-wrap break-words">{msg.text}</p>
                       )}
-                      {msg.mediaType && msg.text && (
+                      {msg.mediaType && !['Photo', 'Document'].includes(msg.mediaType) && msg.text && (
                         <span className="italic text-tg-tx2 text-[10px] block mt-1">[{msg.mediaType}]</span>
                       )}
                       <span className={`text-[10px] float-right ml-3 mt-1 ${msg.isOutgoing ? 'text-white/40' : 'text-tg-tx2/60'}`}>

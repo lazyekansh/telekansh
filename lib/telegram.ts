@@ -244,3 +244,48 @@ export async function sendMessage(
     await client.disconnect();
   }
 }
+
+// ─── Media ──────────────────────────────────────────────────────────
+
+export async function downloadMedia(
+  sessionString: string,
+  chatId: string,
+  peerType: string,
+  accessHash: string,
+  messageId: number
+): Promise<{ base64Data: string; mimeType: string }> {
+  const client = createClient(sessionString);
+  try {
+    await client.connect();
+    const peer = buildInputPeer(chatId, peerType, accessHash);
+    const messages = await client.getMessages(peer, { ids: [messageId] });
+    
+    if (!messages || messages.length === 0) {
+      throw new Error('Message not found');
+    }
+
+    const msg = messages[0];
+    const buffer = await client.downloadMedia(msg, {});
+    
+    if (!buffer) {
+      throw new Error('Failed to download media or media not supported');
+    }
+
+    // Attempt to guess mimeType based on className
+    let mimeType = 'application/octet-stream';
+    if (msg.media && (msg.media as any).className === 'MessageMediaPhoto') {
+      mimeType = 'image/jpeg';
+    } else if (msg.media && (msg.media as any).className === 'MessageMediaDocument') {
+      const doc = (msg.media as any).document;
+      if (doc && doc.mimeType) {
+        mimeType = doc.mimeType;
+      }
+    }
+
+    const base64Data = buffer.toString('base64');
+    return { base64Data, mimeType };
+
+  } finally {
+    await client.disconnect();
+  }
+}
