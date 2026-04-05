@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Telekansh logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#37aee2"/>
+      <stop offset="100%" stop-color="#1e96c8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  <path fill="#fff" d="M392 142 110 251c-12 5-11 22 2 25l72 19 26 81c4 12 20 14 27 4l41-55 70 52c10 8 25 2 28-11l45-203c4-14-10-26-24-21Zm-185 166-36-10 137-88-101 98Z"/>
+</svg>

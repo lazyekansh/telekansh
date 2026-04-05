@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   description: 'A production-ready Telegram web client built with Next.js and GramJS',
   keywords: ['telegram', 'web client', 'telekansh', 'gramjs', 'mtproto'],
   authors: [{ name: 'Telekansh' }],
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/tg-logo.svg',
+    apple: '/tg-logo.svg',
+  },
 };
 
 export const viewport: Viewport = {
