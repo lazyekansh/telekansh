@@ -11,13 +11,15 @@ export default function Home() {
 
   useEffect(() => {
     boot();
+  }, [boot]);
 
+  useEffect(() => {
     if ('serviceWorker' in navigator) {
       void navigator.serviceWorker.register('/sw.js').catch((error) => {
         console.error('Service worker registration failed:', error);
       });
     }
-  }, [boot]);
+  }, []);
 
   if (authStep !== 'done') {
     return <AuthFlow />;

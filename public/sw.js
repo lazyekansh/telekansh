@@ -38,7 +38,7 @@ self.addEventListener('fetch', (event) => {
           })
           .catch(() => {
             if (event.request.mode === 'navigate') {
-              return caches.match('/');
+              return caches.match('/').then((fallback) => fallback || Response.error());
             }
 
             return Response.error();
