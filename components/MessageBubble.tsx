@@ -41,6 +41,7 @@ export default function MessageBubble({ msg, isGroup, messages }: MessageBubbleP
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isSticker = msg.mediaType === 'Sticker';
 
@@ -67,6 +68,37 @@ export default function MessageBubble({ msg, isGroup, messages }: MessageBubbleP
       });
     }
     setShowMenu(true);
+  };
+
+  // Mobile long-press handling
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    
+    touchTimerRef.current = setTimeout(() => {
+      const rect = bubbleRef.current?.getBoundingClientRect();
+      if (rect) {
+        setMenuPos({
+          x: Math.min(clientX - rect.left, rect.width - 160),
+          y: clientY - rect.top,
+        });
+      }
+      setShowMenu(true);
+      // Optional: trigger haptic feedback on supported devices
+      if (typeof window !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 500); // 500ms long press
+  };
+
+  const clearTouchTimer = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
   };
 
   const handleReply = () => {
@@ -125,6 +157,9 @@ export default function MessageBubble({ msg, isGroup, messages }: MessageBubbleP
       <div
         ref={bubbleRef}
         onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={clearTouchTimer}
+        onTouchMove={clearTouchTimer}
         className={`
           relative max-w-[80%] sm:max-w-[75%] select-text
           ${isSticker
